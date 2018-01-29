@@ -230,10 +230,10 @@ package ariane_pkg;
     localparam OPCODE_AUIPC     = 7'h17;
     localparam OPCODE_LUI       = 7'h37;
     localparam OPCODE_AMO       = 7'h2F;
+
     // --------------------
     // Atomics
     // --------------------
-
     typedef enum logic [3:0] {
         AMO_NONE, AMO_LR, AMO_SC, AMO_SWAP, AMO_ADD, AMO_AND, AMO_OR, AMO_XOR, AMO_MAX, AMO_MAXU, AMO_MIN, AMO_MINU
     } amo_t;

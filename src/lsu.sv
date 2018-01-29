@@ -38,6 +38,9 @@ module lsu #(
     output logic                     lsu_valid_o,              // transaction id for which the output is the requested one
     input  logic                     commit_i,                 // commit the pending store
     output logic                     commit_ready_o,           // commit queue is ready to accept another commit request
+    input  logic                     amo_commit_i,             // commit atomic memory operation
+    output logic                     amo_valid_o,              // we have a valid AMO wanting to write the register file
+    output logic [63:0]              amo_result_o,             // the result which needs to be written to the register file
 
     input  logic                     enable_translation_i,     // enable virtual memory translation
     input  logic                     en_ld_st_translation_i,   // enable virtual memory translation for load/stores
@@ -176,10 +179,7 @@ module lsu #(
         .data_rdata_o      ( data_rdata_o            ),
         .amo_op_i          ( amo_op_i                ),
 
-        .amo_commit_i      (                         ),
-        .amo_valid_o       (                         ),
-        .amo_result_o      (                         ),
-        .amo_flush_i       ( 1'b0                    ),
+        .amo_flush_i       ( flush_i                 ),
         .miss_o            ( dcache_miss_o           ),
         .*
     );

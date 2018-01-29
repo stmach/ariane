@@ -62,6 +62,9 @@ module ex_stage #(
     output logic                                   lsu_commit_ready_o,    // commit queue is ready to accept another commit request
     output exception_t                             lsu_exception_o,
     output logic                                   no_st_pending_o,
+    input  logic                                   amo_commit_i,
+    output logic                                   amo_valid_o,
+    output logic [63:0]                            amo_result_o,
     // CSR
     output logic                                   csr_ready_o,
     input  logic                                   csr_valid_i,
