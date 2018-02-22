@@ -73,9 +73,9 @@ module issue_stage #(
     input logic [NR_WB_PORTS-1:0]                    wb_valid_i,
 
     // commit port
-    input  logic [NR_COMMIT_PORTS-1:0][4:0]          waddr_i,
-    input  logic [NR_COMMIT_PORTS-1:0][63:0]         wdata_i,
-    input  logic [NR_COMMIT_PORTS-1:0]               we_i,
+    input  logic [NR_COMMIT_PORTS-1:0][REG_ADDR_SIZE-1:0] waddr_i,
+    input  logic [NR_COMMIT_PORTS-1:0][63:0]              wdata_i,
+    input  logic [NR_COMMIT_PORTS-1:0]                    we_i,
 
     output scoreboard_entry_t [NR_COMMIT_PORTS-1:0]  commit_instr_o,
     input  logic              [NR_COMMIT_PORTS-1:0]  commit_ack_i
@@ -102,39 +102,7 @@ module issue_stage #(
     logic                      issue_ack_iro_rename;
 
     // ---------------------------------------------------------
-    // 1. Issue instruction and read operand
-    // ---------------------------------------------------------
-    issue_read_operands i_issue_read_operands  (
-        .flush_i             ( flush_unissued_instr_i          ),
-        .issue_instr_i       ( issue_instr_rename_iro          ),
-        .issue_instr_valid_i ( issue_instr_valid_rename_iro    ),
-        .issue_ack_o         ( issue_ack_iro_rename            ),
-        .rs1_o               ( rs1_iro_sb                      ),
-        .rs1_i               ( rs1_sb_iro                      ),
-        .rs1_valid_i         ( rs1_valid_sb_iro                ),
-        .rs2_o               ( rs2_iro_sb                      ),
-        .rs2_i               ( rs2_sb_iro                      ),
-        .rs2_valid_i         ( rs2_valid_iro_sb                ),
-        .rd_clobber_i        ( rd_clobber_sb_iro               ),
-        .*
-    );
-
-    // ---------------------------------------------------------
-    // 2. Re-name
-    // ---------------------------------------------------------
-    re_name i_re_name (
-        .clk_i               ( clk_i                        ),
-        .rst_ni              ( rst_ni                       ),
-        .issue_instr_i       ( issue_instr_sb_rename        ),
-        .issue_instr_valid_i ( issue_instr_valid_sb_rename  ),
-        .issue_ack_o         ( issue_ack_rename_sb          ),
-        .issue_instr_o       ( issue_instr_rename_iro       ),
-        .issue_instr_valid_o ( issue_instr_valid_rename_iro ),
-        .issue_ack_i         ( issue_ack_iro_rename         )
-    );
-
-    // ---------------------------------------------------------
-    // 3. Manage issued instructions in a scoreboard
+    // 1. Manage issued instructions in a scoreboard
     // ---------------------------------------------------------
     scoreboard  #(
         .NR_ENTRIES            ( NR_ENTRIES                                ),
@@ -156,6 +124,38 @@ module issue_stage #(
         .trans_id_i            ( trans_id_i                                ),
         .wbdata_i              ( wbdata_i                                  ),
         .ex_i                  ( ex_ex_i                                   ),
+        .*
+    );
+
+    // ---------------------------------------------------------
+    // 2. Re-name
+    // ---------------------------------------------------------
+    re_name i_re_name (
+        .clk_i               ( clk_i                        ),
+        .rst_ni              ( rst_ni                       ),
+        .issue_instr_i       ( issue_instr_sb_rename        ),
+        .issue_instr_valid_i ( issue_instr_valid_sb_rename  ),
+        .issue_ack_o         ( issue_ack_rename_sb          ),
+        .issue_instr_o       ( issue_instr_rename_iro       ),
+        .issue_instr_valid_o ( issue_instr_valid_rename_iro ),
+        .issue_ack_i         ( issue_ack_iro_rename         )
+    );
+
+    // ---------------------------------------------------------
+    // 3. Issue instruction and read operand
+    // ---------------------------------------------------------
+    issue_read_operands i_issue_read_operands  (
+        .flush_i             ( flush_unissued_instr_i          ),
+        .issue_instr_i       ( issue_instr_rename_iro          ),
+        .issue_instr_valid_i ( issue_instr_valid_rename_iro    ),
+        .issue_ack_o         ( issue_ack_iro_rename            ),
+        .rs1_o               ( rs1_iro_sb                      ),
+        .rs1_i               ( rs1_sb_iro                      ),
+        .rs1_valid_i         ( rs1_valid_sb_iro                ),
+        .rs2_o               ( rs2_iro_sb                      ),
+        .rs2_i               ( rs2_sb_iro                      ),
+        .rs2_valid_i         ( rs2_valid_iro_sb                ),
+        .rd_clobber_i        ( rd_clobber_sb_iro               ),
         .*
     );
 

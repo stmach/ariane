@@ -27,9 +27,9 @@ module commit_stage #(
     output logic [NR_COMMIT_PORTS-1:0]              commit_ack_o,       // acknowledge that we are indeed committing
 
     // to register file
-    output  logic [NR_COMMIT_PORTS-1:0][4:0]        waddr_o,            // register file write address
-    output  logic [NR_COMMIT_PORTS-1:0][63:0]       wdata_o,            // register file write data
-    output  logic [NR_COMMIT_PORTS-1:0]             we_o,               // register file write enable
+    output  logic [NR_COMMIT_PORTS-1:0][REG_ADDR_SIZE-1:0] waddr_o,     // register file write address
+    output  logic [NR_COMMIT_PORTS-1:0][63:0]              wdata_o,     // register file write data
+    output  logic [NR_COMMIT_PORTS-1:0]                    we_o,        // register file write enable
 
     // to CSR file and PC Gen (because on certain CSR instructions we'll need to flush the whole pipeline)
     output logic [63:0]                             pc_o,
@@ -48,8 +48,8 @@ module commit_stage #(
     output logic                                    sfence_vma_o        // flush TLBs and pipeline
 );
 
-    assign waddr_o[0] = commit_instr_i[0].rd[4:0];
-    assign waddr_o[1] = commit_instr_i[1].rd[4:0];
+    assign waddr_o[0] = commit_instr_i[0].rd;
+    assign waddr_o[1] = commit_instr_i[1].rd;
 
     assign pc_o       = commit_instr_i[0].pc;
 

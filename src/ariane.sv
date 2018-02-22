@@ -169,9 +169,9 @@ module ariane #(
     // --------------
     // COMMIT <-> ID
     // --------------
-    logic [NR_COMMIT_PORTS-1:0][4:0]  waddr_commit_id;
-    logic [NR_COMMIT_PORTS-1:0][63:0] wdata_commit_id;
-    logic [NR_COMMIT_PORTS-1:0]       we_commit_id;
+    logic [NR_COMMIT_PORTS-1:0][REG_ADDR_SIZE-1:0]  waddr_commit_id;
+    logic [NR_COMMIT_PORTS-1:0][63:0]               wdata_commit_id;
+    logic [NR_COMMIT_PORTS-1:0]                     we_commit_id;
     // --------------
     // IF <-> EX
     // --------------

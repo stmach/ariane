@@ -68,9 +68,9 @@ module issue_read_operands #(
     input  logic                                   csr_ready_i,      // FU is ready
     output logic                                   csr_valid_o,      // Output is valid
     // commit port
-    input  logic [NR_COMMIT_PORTS-1:0][4:0]        waddr_i,
-    input  logic [NR_COMMIT_PORTS-1:0][63:0]       wdata_i,
-    input  logic [NR_COMMIT_PORTS-1:0]             we_i
+    input  logic [NR_COMMIT_PORTS-1:0][REG_ADDR_SIZE-1:0]        waddr_i,
+    input  logic [NR_COMMIT_PORTS-1:0][63:0]                     wdata_i,
+    input  logic [NR_COMMIT_PORTS-1:0]                           we_i
     // committing instruction instruction
     // from scoreboard
     // input  scoreboard_entry     commit_instr_i,
@@ -292,7 +292,7 @@ module issue_read_operands #(
         debug_gpr_rdata_o = operand_a_regfile;
         raddr_a           = issue_instr_i.rs1[4:0];
         // write port
-        waddr             = waddr_i[0];
+        waddr             = waddr_i[0][4:0];
         wdata             = wdata_i[0];
         we                = we_i[0];
         // we've got a debug request in
@@ -325,7 +325,7 @@ module issue_read_operands #(
         .wdata_a_i      ( wdata                  ),
         .we_a_i         ( we                     ),
 
-        .waddr_b_i      ( waddr_i[1]             ),
+        .waddr_b_i      ( waddr_i[1][4:0]        ),
         .wdata_b_i      ( wdata_i[1]             ),
         .we_b_i         ( we_i[1]                )
     );

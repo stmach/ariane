@@ -55,9 +55,9 @@ module re_name (
         end
 
         // re-name the source registers
-        issue_instr_o.rs1 = { re_name_table_q[issue_instr_i.rs1], issue_instr_i.rs1 };
-        issue_instr_o.rs2 = { re_name_table_q[issue_instr_i.rs1], issue_instr_i.rs2 };
-
+        issue_instr_o.rs1 = { re_name_table_q[issue_instr_i.rs1[4:0]], issue_instr_i.rs1[4:0] };
+        issue_instr_o.rs2 = { re_name_table_q[issue_instr_i.rs2[4:0]], issue_instr_i.rs2[4:0] };
+        issue_instr_o.rd  = { re_name_table_q[issue_instr_i.rd[4:0]] ^ 1'b1,  issue_instr_i.rd[4:0]  };
         // we don't want to re-name register zero, it is non-writeable anyway
         re_name_table_n[0] = 1'b0;
     end
