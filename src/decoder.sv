@@ -55,12 +55,7 @@ module decoder (
     logic [63:0] imm_sb_type;
     logic [63:0] imm_u_type;
     logic [63:0] imm_uj_type;
-    logic [63:0] imm_z_type;
-    logic [63:0] imm_s2_type;
     logic [63:0] imm_bi_type;
-    logic [63:0] imm_s3_type;
-    logic [63:0] imm_vs_type;
-    logic [63:0] imm_vu_type;
 
     always_comb begin : decoder
 
@@ -206,24 +201,28 @@ module decoder (
                         default: illegal_instr = 1'b1;
                     endcase
                 end
-
+                // Memory ordering instructions
                 OPCODE_FENCE: begin
-                    // FENCE.I
-                    if (instr.itype.funct3 == 3'b001) begin
-                        instruction_o.fu  = CSR;
-                        instruction_o.op  = FENCE_I;
-                        instruction_o.rs1 = '0;
-                        instruction_o.rs2 = '0;
-                        instruction_o.rd  = '0;
-                    // FENCE
-                    end else begin
+                    instruction_o.fu  = CSR;
+                    instruction_o.rs1 = '0;
+                    instruction_o.rs2 = '0;
+                    instruction_o.rd  = '0;
+
+                    case (instr.stype.funct3)
+                        // FENCE
                         // Currently implemented as a whole DCache flush boldly ignoring other things
-                        instruction_o.fu  = CSR;
-                        instruction_o.op  = FENCE;
-                        instruction_o.rs1 = '0;
-                        instruction_o.rs2 = '0;
-                        instruction_o.rd  = '0;
-                    end
+                        3'b000: instruction_o.op  = FENCE;
+                        // FENCE.I
+                        3'b001: begin
+                            if (instr.instr[31:20] != '0)
+                                illegal_instr = 1'b1;
+                            instruction_o.op  = FENCE_I;
+                        end
+                        default: illegal_instr = 1'b1;
+                    endcase
+
+                    if (instr.stype.rs1 != '0 || instr.stype.imm0 != '0 || instr.instr[31:28] != '0)
+                        illegal_instr = 1'b1;
                 end
 
                 // --------------------------
@@ -270,22 +269,20 @@ module decoder (
                     instruction_o.rs2 = instr.rtype.rs2;
                     instruction_o.rd  = instr.rtype.rd;
 
-                    if (~instr.instr[28])
-                      unique case ({instr.rtype.funct7, instr.rtype.funct3})
-
-                        {7'b000_0000, 3'b000}: instruction_o.op = ADDW; // addw
-                        {7'b010_0000, 3'b000}: instruction_o.op = SUBW; // subw
-                        {7'b000_0000, 3'b001}: instruction_o.op = SLLW; // sllw
-                        {7'b000_0000, 3'b101}: instruction_o.op = SRLW; // srlw
-                        {7'b010_0000, 3'b101}: instruction_o.op = SRAW; // sraw
-                        // Multiplications
-                        {7'b000_0001, 3'b000}: instruction_o.op = MULW;
-                        {7'b000_0001, 3'b100}: instruction_o.op = DIVW;
-                        {7'b000_0001, 3'b101}: instruction_o.op = DIVUW;
-                        {7'b000_0001, 3'b110}: instruction_o.op = REMW;
-                        {7'b000_0001, 3'b111}: instruction_o.op = REMUW;
-                        default: illegal_instr = 1'b1;
-                      endcase
+                        unique case ({instr.rtype.funct7, instr.rtype.funct3})
+                            {7'b000_0000, 3'b000}: instruction_o.op = ADDW; // addw
+                            {7'b010_0000, 3'b000}: instruction_o.op = SUBW; // subw
+                            {7'b000_0000, 3'b001}: instruction_o.op = SLLW; // sllw
+                            {7'b000_0000, 3'b101}: instruction_o.op = SRLW; // srlw
+                            {7'b010_0000, 3'b101}: instruction_o.op = SRAW; // sraw
+                            // Multiplications
+                            {7'b000_0001, 3'b000}: instruction_o.op = MULW;
+                            {7'b000_0001, 3'b100}: instruction_o.op = DIVW;
+                            {7'b000_0001, 3'b101}: instruction_o.op = DIVUW;
+                            {7'b000_0001, 3'b110}: instruction_o.op = REMW;
+                            {7'b000_0001, 3'b111}: instruction_o.op = REMUW;
+                            default: illegal_instr = 1'b1;
+                        endcase
                 end
                 // --------------------------------
                 // Reg-Immediate Operations
@@ -297,27 +294,27 @@ module decoder (
                     instruction_o.rd  = instr.itype.rd;
 
                     unique case (instr.itype.funct3)
-                      3'b000: instruction_o.op = ADD;   // Add Immediate
-                      3'b010: instruction_o.op = SLTS;  // Set to one if Lower Than Immediate
-                      3'b011: instruction_o.op = SLTU;  // Set to one if Lower Than Immediate Unsigned
-                      3'b100: instruction_o.op = XORL;  // Exclusive Or with Immediate
-                      3'b110: instruction_o.op = ORL;   // Or with Immediate
-                      3'b111: instruction_o.op = ANDL;  // And with Immediate
+                        3'b000: instruction_o.op = ADD;   // Add Immediate
+                        3'b010: instruction_o.op = SLTS;  // Set to one if Lower Than Immediate
+                        3'b011: instruction_o.op = SLTU;  // Set to one if Lower Than Immediate Unsigned
+                        3'b100: instruction_o.op = XORL;  // Exclusive Or with Immediate
+                        3'b110: instruction_o.op = ORL;   // Or with Immediate
+                        3'b111: instruction_o.op = ANDL;  // And with Immediate
 
-                      3'b001: begin
-                        instruction_o.op = SLL;  // Shift Left Logical by Immediate
-                        if (instr.instr[31:26] != 6'b0)
-                          illegal_instr = 1'b1;
-                      end
+                        3'b001: begin
+                          instruction_o.op = SLL;  // Shift Left Logical by Immediate
+                          if (instr.instr[31:26] != 6'b0)
+                            illegal_instr = 1'b1;
+                        end
 
-                      3'b101: begin
-                        if (instr.instr[31:26] == 6'b0)
-                          instruction_o.op = SRL;  // Shift Right Logical by Immediate
-                        else if (instr.instr[31:26] == 6'b010_000)
-                          instruction_o.op = SRA;  // Shift Right Arithmetically by Immediate
-                        else
-                          illegal_instr = 1'b1;
-                      end
+                        3'b101: begin
+                            if (instr.instr[31:26] == 6'b0)
+                                instruction_o.op = SRL;  // Shift Right Logical by Immediate
+                            else if (instr.instr[31:26] == 6'b010_000)
+                                instruction_o.op = SRA;  // Shift Right Arithmetically by Immediate
+                            else
+                                illegal_instr = 1'b1;
+                        end
                     endcase
                 end
 
@@ -331,24 +328,24 @@ module decoder (
                     instruction_o.rd  = instr.itype.rd;
 
                     unique case (instr.itype.funct3)
-                      3'b000: instruction_o.op = ADDW;  // Add Immediate
+                        3'b000: instruction_o.op = ADDW;  // Add Immediate
 
-                      3'b001: begin
-                        instruction_o.op = SLLW;  // Shift Left Logical by Immediate
-                        if (instr.instr[31:25] != 7'b0)
-                          illegal_instr = 1'b1;
-                      end
+                        3'b001: begin
+                          instruction_o.op = SLLW;  // Shift Left Logical by Immediate
+                          if (instr.instr[31:25] != 7'b0)
+                              illegal_instr = 1'b1;
+                        end
 
-                      3'b101: begin
-                        if (instr.instr[31:25] == 7'b0)
-                          instruction_o.op = SRLW;  // Shift Right Logical by Immediate
-                        else if (instr.instr[31:25] == 7'b010_0000)
-                          instruction_o.op = SRAW;  // Shift Right Arithmetically by Immediate
-                        else
-                          illegal_instr = 1'b1;
-                      end
+                        3'b101: begin
+                            if (instr.instr[31:25] == 7'b0)
+                                instruction_o.op = SRLW;  // Shift Right Logical by Immediate
+                            else if (instr.instr[31:25] == 7'b010_0000)
+                                instruction_o.op = SRAW;  // Shift Right Arithmetically by Immediate
+                            else
+                                illegal_instr = 1'b1;
+                        end
 
-                      default: illegal_instr = 1'b1;
+                        default: illegal_instr = 1'b1;
                     endcase
                 end
                 // --------------------------------
@@ -461,6 +458,9 @@ module decoder (
                     imm_select              = IIMM;
                     instruction_o.rd        = instr.itype.rd;
                     is_control_flow_instr_o = 1'b1;
+                    // invalid jump and link register -> reserved for vector encoding
+                    if (instr.itype.funct3 != 3'b0)
+                        illegal_instr = 1'b1;
                 end
                 // Jump and link
                 OPCODE_JAL: begin
@@ -491,17 +491,13 @@ module decoder (
     // Sign extend immediate
     // --------------------------------
     always_comb begin : sign_extend
-        imm_i_type  = { {52 {instruction_i[31]}}, instruction_i[31:20] };
+        imm_i_type  = i_imm(instruction_i);
         imm_iz_type = {  52'b0, instruction_i[31:20] };
         imm_s_type  = { {52 {instruction_i[31]}}, instruction_i[31:25], instruction_i[11:7] };
-        imm_sb_type = { {51 {instruction_i[31]}}, instruction_i[31], instruction_i[7], instruction_i[30:25], instruction_i[11:8], 1'b0 };
+        imm_sb_type = sb_imm(instruction_i);
         imm_u_type  = { {32 {instruction_i[31]}}, instruction_i[31:12], 12'b0 }; // JAL, AUIPC, sign extended to 64 bit
-        imm_uj_type = { {44 {instruction_i[31]}}, instruction_i[19:12], instruction_i[20], instruction_i[30:21], 1'b0 };
-        imm_s2_type = { 59'b0, instruction_i[24:20] };
+        imm_uj_type = uj_imm(instruction_i);
         imm_bi_type = { {59{instruction_i[24]}}, instruction_i[24:20] };
-        imm_s3_type = { 59'b0, instruction_i[29:25] };
-        imm_vs_type = { {58 {instruction_i[24]}}, instruction_i[24:20], instruction_i[25] };
-        imm_vu_type = { 58'b0, instruction_i[24:20], instruction_i[25] };
 
         // NOIMM, PCIMM, IIMM, SIMM, BIMM, BIMM, UIMM, JIMM
         // select immediate

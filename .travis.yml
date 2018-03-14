@@ -1,0 +1,68 @@
+language: cpp
+# run on new infrastructure
+sudo: false
+cache:
+  apt: true
+  directories:
+    $RISCV
+
+# required packages to install
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.8
+      - g++-4.8
+      - gperf
+      - autoconf
+      - automake
+      - autotools-dev
+      - libmpc-dev
+      - libmpfr-dev
+      - libgmp-dev
+      - gawk
+      - build-essential
+      - bison
+      - flex
+      - texinfo
+      - python-pexpect
+      - libusb-1.0-0-dev
+      - device-tree-compiler
+env:
+  global:
+    - RISCV="/home/travis/riscv_install"
+    - PATH="/home/travis/riscv_install/bin:$PATH"
+
+branches:
+  only:
+  - master
+  - ariane_next
+
+before_install:
+  - export CXX=g++-4.8 CC=gcc-4.8
+  - ci/make-tmp.sh
+  - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/tmp/lib
+  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/tmp/lib
+  - export C_INCLUDE_PATH=$TRAVIS_BUILD_DIR/tmp/include
+  - export CPLUS_INCLUDE_PATH=$TRAVIS_BUILD_DIR/tmp/include
+  - export VERILATOR_ROOT=$TRAVIS_BUILD_DIR/tmp/verilator-3.918/
+
+stages:
+  - compile
+  - test
+
+jobs:
+  include:
+    - stage: compile
+      script:
+        - ci/build-riscv-gcc.sh
+    - stage: test
+      script:
+        - ci/install-verilator.sh
+        - ci/install-fesvr.sh
+        - ci/build-riscv-tests.sh
+        - make run-asm-tests-verilator verilator=$TRAVIS_BUILD_DIR/tmp/bin/verilator
+
+# extra time duing long builds
+install: travis_wait

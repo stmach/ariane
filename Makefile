@@ -12,7 +12,7 @@ max_cycles ?= 10000000
 # Test case to run
 test_case ?= core_test
 # QuestaSim Version
-questa_version ?= -10.6b
+questa_version ?=
 # verilator version
 verilator ?= verilator
 # preset which runs a single test
@@ -53,8 +53,8 @@ riscv-tests := rv64ui-p-add rv64ui-p-addi rv64ui-p-slli rv64ui-p-addiw rv64ui-p-
 			   rv64ui-p-sraiw rv64ui-p-sraw rv64ui-p-srl rv64ui-p-srli rv64ui-p-srliw rv64ui-p-srlw 						 \
 			   rv64ui-p-lb rv64ui-p-lbu rv64ui-p-ld rv64ui-p-lh rv64ui-p-lhu rv64ui-p-lui rv64ui-p-lw rv64ui-p-lwu 			 \
 			   rv64mi-p-csr rv64mi-p-mcsr rv64mi-p-illegal rv64mi-p-ma_addr rv64mi-p-ma_fetch rv64mi-p-sbreak rv64mi-p-scall \
-			   rv64si-p-csr rv64si-p-ma_fetch rv64si-p-scall rv64si-p-wfi rv64si-p-sbreak rv64si-p-dirty  					 \
-			   rv64uc-p-rvc																									 \
+			   rv64si-p-csr rv64si-p-ma_fetch rv64si-p-scall rv64si-p-wfi rv64si-p-sbreak rv64si-p-dirty					 \
+			   rv64uc-p-rvc \
 			   rv64ui-v-add rv64ui-v-addi rv64ui-p-slli rv64ui-v-addiw rv64ui-v-addw rv64ui-v-and rv64ui-v-auipc			 \
 			   rv64ui-v-beq rv64ui-v-bge rv64ui-v-bgeu rv64ui-v-andi rv64ui-v-blt rv64ui-v-bltu rv64ui-v-bne 				 \
 			   rv64ui-v-simple rv64ui-v-jal rv64ui-v-jalr rv64ui-v-or rv64ui-v-ori rv64ui-v-sub rv64ui-v-subw				 \
@@ -80,7 +80,7 @@ list_incdir := $(foreach dir, ${incdir}, +incdir+$(dir))
 
 # Build the TB and module using QuestaSim
 build: $(library) $(library)/.build-agents $(library)/.build-interfaces $(library)/.build-components \
-		$(library)/.build-srcs $(library)/.build-tb
+		$(library)/.build-srcs $(library)/.build-tb $(library)/.build-dpi
 		# Optimize top level
 	vopt$(questa_version) $(compile_flag) -work $(library)  $(test_top_level) -o $(test_top_level)_optimized +acc -check_synthesis
 
@@ -94,10 +94,16 @@ $(library)/.build-srcs: $(util) $(src)
 
 # build TBs
 $(library)/.build-tb: $(dpi) $(tbs)
-	# Compile top level with DPI headers
+	# Compile top level
 	vlog$(questa_version) -sv $(tbs) -work $(library) $(filter %.c %.cc, $(dpi)) -ccflags "-g -std=c++11 " -dpiheader tb/dpi/elfdpi.h
 	touch $(library)/.build-tb
 
+# compile DPIs
+$(library)/.build-dpi: $(dpi)
+	# Compile C-code and generate .so file
+	g++ -c -fPIC -m64 -std=c++0x -I$(QUESTASIM_HOME)/include -shared -o $(library)/elf_dpi.o -c $(filter %.c %.cc, $(dpi))
+	g++ -shared -m64 -o $(library)/elf_dpi.so $(library)/elf_dpi.o
+	touch $(library)/.build-dpi
 
 # Compile Sequences and Tests
 $(library)/.build-components: $(envs) $(sequences) $(test_pkg)
@@ -120,34 +126,34 @@ $(library):
 	vlib${questa_version} ${library}
 
 sim: build
-	vsim${questa_version} -lib ${library} ${top_level}_optimized +UVM_TESTNAME=${test_case} +BASEDIR=$(riscv-test-dir) \
-	+ASMTEST=$(riscv-test)  $(uvm-flags) +UVM_VERBOSITY=HIGH -coverage -classdebug -do "do tb/wave/wave_core.do"
+	vsim${questa_version} -64 -lib ${library} ${top_level}_optimized +UVM_TESTNAME=${test_case} +BASEDIR=$(riscv-test-dir) \
+	+ASMTEST=$(riscv-test)  $(uvm-flags) +UVM_VERBOSITY=HIGH -coverage -classdebug -sv_lib $(library)/elf_dpi -do "do tb/wave/wave_core.do"
 
 sim_nopt: build
-	vsim${questa_version} -novopt -lib ${library} ${top_level} +UVM_TESTNAME=${test_case} +BASEDIR=$(riscv-test-dir) \
-	+ASMTEST=$(riscv-test)  $(uvm-flags) +UVM_VERBOSITY=HIGH -coverage -classdebug -do "do tb/wave/wave_core.do"
+	vsim${questa_version} -64 -novopt -lib ${library} ${top_level} +UVM_TESTNAME=${test_case} +BASEDIR=$(riscv-test-dir) \
+	+ASMTEST=$(riscv-test)  $(uvm-flags) +UVM_VERBOSITY=HIGH -coverage -classdebug -sv_lib $(library)/elf_dpi -do "do tb/wave/wave_core.do"
 
 
 simc: build
-	vsim${questa_version} -c -lib ${library} ${top_level}_optimized +max-cycles=$(max_cycles) +UVM_TESTNAME=${test_case} \
-	 +BASEDIR=$(riscv-test-dir) $(uvm-flags) +ASMTEST=$(riscv-test) -coverage -classdebug -do "do tb/wave/wave_core.do"
+	vsim${questa_version} -64 -c -lib ${library} ${top_level}_optimized +max-cycles=$(max_cycles) +UVM_TESTNAME=${test_case} \
+	 +BASEDIR=$(riscv-test-dir) $(uvm-flags) +ASMTEST=$(riscv-test) "+UVM_VERBOSITY=HIGH" -coverage -classdebug -sv_lib $(library)/elf_dpi -do "run -all; do tb/wave/wave_core.do; exit"
 
 run-asm-tests: build
-	$(foreach test, $(riscv-tests), vsim$(questa_version) +BASEDIR=$(riscv-test-dir) +max-cycles=$(max_cycles) \
+	$(foreach test, $(riscv-tests), vsim$(questa_version) -64 +BASEDIR=$(riscv-test-dir) +max-cycles=$(max_cycles) \
 		+UVM_TESTNAME=$(test_case) $(uvm-flags) +ASMTEST=$(test) +uvm_set_action="*,_ALL_,UVM_ERROR,UVM_DISPLAY|UVM_STOP" -c \
-		-coverage -classdebug -do "coverage save -onexit $@.ucdb; run -a; quit -code [coverage attribute -name TESTSTATUS -concise]"  \
+		-coverage -classdebug  -sv_lib $(library)/elf_dpi -do "coverage save -onexit $@.ucdb; run -a; quit -code [coverage attribute -name TESTSTATUS -concise]"  \
 		$(library).$(test_top_level)_optimized;)
 
 run-asm-tests-verilator: verilate
-	$(foreach test, $(riscv-tests), obj_dir/Variane_wrapped $(riscv-test-dir)/$(test);)
+	$(foreach test, $(riscv-tests), obj_dir/Variane_wrapped --label="Starting: $(riscv-test-dir)/$(test)" $(riscv-test-dir)/$(test);)
 
 run-failed-tests: build
 	# make the tests
 	cd failedtests && make
 	# run the RTL simulation
-	$(foreach test, $(failed-tests:.S=), vsim$(questa_version) +BASEDIR=. +max-cycles=$(max_cycles) \
+	$(foreach test, $(failed-tests:.S=), vsim$(questa_version) -64 +BASEDIR=. +max-cycles=$(max_cycles) \
 		+UVM_TESTNAME=$(test_case)  $(uvm-flags) +ASMTEST=$(test) +signature=$(test).rtlsim.sig +uvm_set_action="*,_ALL_,UVM_ERROR,UVM_DISPLAY|UVM_STOP" -c \
-		-coverage -classdebug -do "coverage save -onexit $@.ucdb; run -a; quit -code [coverage attribute -name TESTSTATUS -concise]" \
+		-coverage -classdebug  -sv_lib $(library)/elf_dpi -do "coverage save -onexit $@.ucdb; run -a; quit -code [coverage attribute -name TESTSTATUS -concise]" \
 		$(library).$(test_top_level)_optimized;)
 	# run it on spike
 	$(foreach test, $(failed-tests:.S=), spike +signature=$(test).spike.sig $(test);)
@@ -160,8 +166,8 @@ $(tests): build
 	vopt${questa_version} -work ${library} ${compile_flag} $@_tb -o $@_tb_optimized +acc -check_synthesis
 	# vsim${questa_version} $@_tb_optimized
 	# vsim${questa_version} +UVM_TESTNAME=$@_test -coverage -classdebug $@_tb_optimized
-	vsim${questa_version} +UVM_TESTNAME=$@_test +ASMTEST=$(riscv-test-dir)/$(riscv-test) \
-	+uvm_set_action="*,_ALL_,UVM_ERROR,UVM_DISPLAY|UVM_STOP" -c -coverage -classdebug \
+	vsim${questa_version} -64 +UVM_TESTNAME=$@_test +ASMTEST=$(riscv-test-dir)/$(riscv-test) \
+	+uvm_set_action="*,_ALL_,UVM_ERROR,UVM_DISPLAY|UVM_STOP" -c -coverage -classdebug -sv_lib $(library)/elf_dpi \
 	-do "coverage save -onexit $@.ucdb; run -a; quit -code [coverage attribute -name TESTSTATUS -concise]" \
 	${library}.$@_tb_optimized
 
@@ -169,7 +175,7 @@ $(tests): build
 verilate:
 	$(verilator) $(ariane_pkg) $(filter-out src/regfile.sv, $(wildcard src/*.sv)) $(wildcard src/axi_slice/*.sv) \
 	src/util/cluster_clock_gating.sv src/util/behav_sram.sv src/axi_mem_if/axi2mem.sv tb/agents/axi_if/axi_if.sv \
-	--unroll-count 256 -Wno-fatal -LDFLAGS "-lfesvr" -Wall --cc --trace \
+	--unroll-count 1024 -Wno-fatal -Wno-UNOPTFLAT -LDFLAGS "-lfesvr" -CFLAGS "-std=c++11" -Wall --cc --trace \
 	$(list_incdir) --top-module ariane_wrapped --exe tb/ariane_tb.cpp tb/simmem.cpp
 	cd obj_dir && make -j8 -f Variane_wrapped.mk
 

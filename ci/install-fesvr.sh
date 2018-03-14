@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd $ROOT/tmp
@@ -12,5 +12,5 @@ cd $ROOT/tmp/riscv-fesvr-$RELEASE
 mkdir -p build
 cd build
 ../configure --prefix="$ROOT/tmp"
-make -j
+make -j2
 make install

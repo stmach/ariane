@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd $ROOT/tmp
@@ -11,13 +11,17 @@ autoconf
 mkdir -p build
 cd build
 ../configure --prefix=$ROOT/tmp/riscv-tests/build
-make isa -j
+make isa -j2 > /dev/null
 make install
 
 cd isa
 # generate hex files
-for f in $(ls | grep -v '\.[dump|hex]'); do
-    # elf2hex $f
-    echo "elf2hex $f > $f.hex"
-    elf2hex 8 16384 $f 2147483648 > $f.hex
-done
+if [ $(command -v elf2hex) > /dev/null ]; then
+    for f in $(ls | grep -v '\.[dump|hex]'); do
+        # elf2hex $f
+        echo "elf2hex $f > $f.hex"
+        elf2hex 8 16384 $f 2147483648 > $f.hex
+    done
+else
+    echo "Skipping hex file generation"
+fi

@@ -38,6 +38,7 @@ module ex_stage #(
     output logic                                   alu_ready_o,           // FU is ready
     input  logic                                   alu_valid_i,           // Output is valid
     output logic                                   alu_valid_o,           // ALU result is valid
+    output logic                                   alu_branch_res_o,      // Branch comparison result
     output logic [63:0]                            alu_result_o,
     output logic [TRANS_ID_BITS-1:0]               alu_trans_id_o,        // ID of scoreboard entry at which to write back
     output exception_t                             alu_exception_o,
@@ -85,11 +86,10 @@ module ex_stage #(
     input  logic                                   en_ld_st_translation_i,
     input  logic                                   flush_tlb_i,
     input  logic                                   fetch_req_i,
-    output logic                                   fetch_gnt_o,
-    output logic                                   fetch_valid_o,
     input  logic [63:0]                            fetch_vaddr_i,
-    output logic [63:0]                            fetch_rdata_o,
-    output exception_t                             fetch_ex_o,
+    output logic                                   fetch_valid_o,
+    output logic [63:0]                            fetch_paddr_o,
+    output exception_t                             fetch_exception_o,
     input  priv_lvl_t                              priv_lvl_i,
     input  priv_lvl_t                              ld_st_priv_lvl_i,
     input  logic                                   sum_i,
@@ -101,13 +101,6 @@ module ex_stage #(
     output logic                                   itlb_miss_o,
     output logic                                   dtlb_miss_o,
     output logic                                   dcache_miss_o,
-
-    output logic [63:0]                            instr_if_address_o,
-    output logic                                   instr_if_data_req_o,
-    output logic [3:0]                             instr_if_data_be_o,
-    input  logic                                   instr_if_data_gnt_i,
-    input  logic                                   instr_if_data_rvalid_i,
-    input  logic [63:0]                            instr_if_data_rdata_i,
 
     // DCache interface
     input  logic                                   dcache_en_i,
@@ -130,6 +123,7 @@ module ex_stage #(
     // --------------------
     branch_unit branch_unit_i (
         .fu_valid_i          ( alu_valid_i || lsu_valid_i || csr_valid_i || mult_valid_i), // any functional unit is valid, check that there is no accidental mis-predict
+        .branch_comp_res_i   ( alu_branch_res_o),
         .*
     );
 

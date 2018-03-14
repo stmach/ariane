@@ -16,3 +16,6 @@ src/moore.sv
 obj_dir/*
 /tmp*
 *.dasm
+/Bender.lock
+/Bender.local
+build/
