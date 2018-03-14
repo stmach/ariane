@@ -30,6 +30,8 @@ module id_stage (
     output logic                                     issue_entry_valid_o, // issue entry is valid
     output logic                                     is_ctrl_flow_o,      // the instruction we issue is a ctrl flow instructions
     input  logic                                     issue_instr_ack_i,   // issue stage acknowledged sampling of instructions
+    // Atomic Memory operation commited
+    input  logic                                     amo_commit_i,
     // from CSR file
     input  priv_lvl_t                                priv_lvl_i,          // current privilege level
     input  logic                                     tvm_i,

@@ -164,8 +164,8 @@ module ariane #(
     logic                     lsu_commit_ready_ex_commit;
     logic                     no_st_pending_ex_commit;
     logic                     amo_commit_commit_ex;
-    logic                     amo_valid_ex_commit;
-    logic [63:0]              amo_result;
+    logic                     amo_valid;
+    logic [63:0]              amo_result_commit_ex;
     // --------------
     // ID <-> COMMIT
     // --------------
@@ -304,6 +304,8 @@ module ariane #(
         .issue_entry_valid_o        ( issue_entry_valid_id_issue      ),
         .is_ctrl_flow_o             ( is_ctrl_fow_id_issue            ),
         .issue_instr_ack_i          ( issue_instr_issue_id            ),
+        // Atomics
+        .amo_commit_i               ( amo_commit                      ),
 
         .priv_lvl_i                 ( priv_lvl                        ),
         .tvm_i                      ( tvm_csr_id                      ),
@@ -360,8 +362,6 @@ module ariane #(
         // CSR
         .csr_ready_i                ( csr_ready_ex_id                 ),
         .csr_valid_o                ( csr_valid_id_ex                 ),
-        // Atomics
-        .amo_commit_i               ( amo_commit                      ),
         .trans_id_i                 ( {alu_trans_id_ex_id,         lsu_trans_id_ex_id,  branch_trans_id_ex_id,    csr_trans_id_ex_id,         mult_trans_id_ex_id        }),
         .wbdata_i                   ( {alu_result_ex_id,           lsu_result_ex_id,    branch_result_ex_id,      csr_result_ex_id,           mult_result_ex_id          }),
         .ex_ex_i                    ( {{$bits(exception_t){1'b0}}, lsu_exception_ex_id, branch_exception_ex_id,   {$bits(exception_t){1'b0}}, {$bits(exception_t){1'b0}} }),
@@ -422,9 +422,9 @@ module ariane #(
         .lsu_exception_o        ( lsu_exception_ex_id                    ),
         .no_st_pending_o        ( no_st_pending_ex_commit                ),
         // Atomic Memory Operations
-        .amo_commit_i           ( amo_commit_commit_ex                   ), // commit is actually committing the atomic memory opartion e.g.: it is not speculative any more
+        .amo_commit_i           ( amo_commit                             ), // commit is actually committing the atomic memory opartion e.g.: it is not speculative any more
         .amo_valid_o            ( amo_valid_ex_commit                    ), // the result of the atomic memory operation is valid
-        .amo_result_o           ( amo_result                             ), // to commit stage -> commit the atomic memory operation
+        .amo_result_o           ( amo_result_ex_commit                   ), // to commit stage -> commit the atomic memory operation
         // CSR
         .csr_ready_o            ( csr_ready_ex_id                        ),
         .csr_valid_i            ( csr_valid_id_ex                        ),
@@ -482,9 +482,9 @@ module ariane #(
         .we_o                   ( we_commit_id                  ),
         .commit_lsu_o           ( lsu_commit_commit_ex          ),
         .commit_lsu_ready_i     ( lsu_commit_ready_ex_commit    ),
-        .amo_commit_o           ( amo_commit_commit_ex          ),
+        .amo_commit_o           ( amo_commit                    ),
         .amo_valid_i            ( amo_valid_ex_commit           ),
-        .amo_result_i           ( amo_result                    ),
+        .amo_result_i           ( amo_result_ex_commit          ),
         .commit_csr_o           ( csr_commit_commit_ex          ),
         .pc_o                   ( pc_commit                     ),
         .csr_op_o               ( csr_op_commit_csr             ),

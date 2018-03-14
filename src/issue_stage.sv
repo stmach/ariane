@@ -64,8 +64,6 @@ module issue_stage #(
 
     input  logic                                     csr_ready_i,
     output logic                                     csr_valid_o,
-    // Atomic Memory operation commited
-    input  logic                                     amo_commit_i,
     // write back port
     input logic [NR_WB_PORTS-1:0][TRANS_ID_BITS-1:0] trans_id_i,
 
