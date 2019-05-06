@@ -67,9 +67,9 @@ ariane_pkg := include/riscv_pkg.sv                          \
 ariane_pkg := $(addprefix $(root-dir), $(ariane_pkg))
 
 # utility modules
-util := $(wildcard src/util/*.svh)                          \
-        src/util/instruction_tracer_if.sv                   \
-        src/util/instruction_tracer.sv                      \
+util := include/instr_tracer_pkg.sv                         \
+        src/util/instr_tracer_if.sv                         \
+        src/util/instr_tracer.sv                            \
         src/tech_cells_generic/src/cluster_clock_gating.sv  \
         tb/common/mock_uart.sv                              \
         src/util/sram.sv
@@ -146,6 +146,7 @@ src :=  $(filter-out src/ariane_regfile.sv, $(wildcard src/*.sv))              \
         src/axi/src/axi_delayer.sv                                             \
         src/axi/src/axi_to_axi_lite.sv                                         \
         src/fpga-support/rtl/SyncSpRamBeNx64.sv                                \
+        src/common_cells/src/unread.sv                                         \
         src/common_cells/src/sync.sv                                           \
         src/common_cells/src/cdc_2phase.sv                                     \
         src/common_cells/src/spill_register.sv                                 \
@@ -157,6 +158,7 @@ src :=  $(filter-out src/ariane_regfile.sv, $(wildcard src/*.sv))              \
         src/common_cells/src/deprecated/fifo_v2.sv                             \
         src/common_cells/src/fifo_v3.sv                                        \
         src/common_cells/src/lzc.sv                                            \
+        src/common_cells/src/popcount.sv                                       \
         src/common_cells/src/rr_arb_tree.sv                                    \
         src/common_cells/src/deprecated/rrarbiter.sv                           \
         src/common_cells/src/stream_delay.sv                                   \
@@ -361,7 +363,6 @@ verilate_command := $(verilator)                                                
                     -Wno-UNOPTFLAT                                                                     \
                     -Wno-style                                                                         \
                     $(if $(PROFILE),--stats --stats-vars --profile-cfuncs,)                            \
-                    -Wno-lint                                                                          \
                     $(if $(DEBUG),--trace --trace-structs,)                                            \
                     -LDFLAGS "-L$(RISCV)/lib -Wl,-rpath,$(RISCV)/lib -lfesvr$(if $(PROFILE), -g -pg,)" \
                     -CFLAGS "$(CFLAGS)$(if $(PROFILE), -g -pg,)" -Wall --cc  --vpi                     \
@@ -456,12 +457,17 @@ check-torture:
 	diff -s $(riscv-torture-dir)/$(test-location).spike.sig $(riscv-torture-dir)/$(test-location).rtlsim.sig
 
 fpga_filter := $(addprefix $(root-dir), bootrom/bootrom.sv)
+fpga_filter += $(addprefix $(root-dir), include/instr_tracer_pkg.sv)
+fpga_filter += $(addprefix $(root-dir), src/util/ex_trace_item.sv)
+fpga_filter += $(addprefix $(root-dir), src/util/instr_trace_item.sv)
+fpga_filter += $(addprefix $(root-dir), src/util/instr_tracer_if.sv)
+fpga_filter += $(addprefix $(root-dir), src/util/instr_tracer.sv)
 
-fpga: $(ariane_pkg) $(util) $(src) $(fpga_src) $(util) $(uart_src)
+fpga: $(ariane_pkg) $(util) $(src) $(fpga_src) $(uart_src)
 	@echo "[FPGA] Generate sources"
 	@echo read_vhdl        {$(uart_src)}    > fpga/scripts/add_sources.tcl
 	@echo read_verilog -sv {$(ariane_pkg)} >> fpga/scripts/add_sources.tcl
-	@echo read_verilog -sv {$(util)}       >> fpga/scripts/add_sources.tcl
+	@echo read_verilog -sv {$(filter-out $(fpga_filter), $(util))}     >> fpga/scripts/add_sources.tcl
 	@echo read_verilog -sv {$(filter-out $(fpga_filter), $(src))} 	   >> fpga/scripts/add_sources.tcl
 	@echo read_verilog -sv {$(fpga_src)}   >> fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
